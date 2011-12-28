@@ -548,12 +548,8 @@ void pooofle(double *u,int n,double *f,double *nlin)
 
 int index2d(int i,int  j,int  stride)	// this is the wrap-around condition for
 {   					// the periodic boundaries
-  // if(i<0) i+=stride;
-  // else if(i>=stride) i-=stride;
-  // if(j<0) j+=stride;
-  // else if(j>=stride) j-=stride;
 
-  return((i+stride)%stride + stride * (j+stride)%stride);
+	return ((i+stride)%stride + stride * ((j+stride)%stride));
 }
 
 void interpolate(double *uc,double *uf,int nc,int nf)
@@ -736,20 +732,101 @@ void funct(double *f,double *u,int n, int t)
 void newtonnl( double *u, int n, double *f)
 { //newtons method directly for pde
   int i,j,nmem; double h,h2,d2,*u2;
-  double nonlin,denom;
+  double nonlin,denom, predenom;
+
+
 
   h=(xmax-xmin)/(double) n;
   h2=h*h;     //  if you change this, you must also change d2 in defect !!!
   d2=1./h2;
-  for(i=0;i<n;i++){ 
-    for(j=0;j<n;j++){ 
-      denom= -4.*d2 +invtau+df(u[index2d(i,j,n)]);
-      nonlin=u[index2d(i,j,n)]*invtau +fn(u[index2d(i,j,n)]) -f[index2d(i,j,n)];
-      u[index2d(i,j,n)]=
-	u[index2d(i,j,n)]
-	-( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]+ u[index2d(i+1,j,n)]
-	   +u[index2d(i,j+1,n)] -4*u[index2d(i,j,n)])*d2 +nonlin )/denom;
+
+	predenom = -4. * d2 + invtau;
+
+int blocs = n/4;
+int llindar = blocs * 4;
+// int resta = blocs - llindar;
+
+int aux, aux1, aux2, aux3;
+double uaux, uaux1, uaux2, uaux3;
+
+  for(i=0;i<n;i++){
+    // for(j=0;j<n;j++){
+    for(j=0;j<llindar;j+=4){
+    // for(j=0;j<n;j+=1){
+		aux = index2d(i,j,n);
+		uaux = u[aux];
+		aux1= index2d(i,j+1,n);
+		uaux1 = u[aux1];
+		aux2= index2d(i,j+2,n);
+		uaux2 = u[aux2];
+		aux3= index2d(i,j+3,n);
+		uaux3 = u[aux3];
+	
+		denom  = predenom + df(uaux);
+		nonlin = uaux * invtau + fn(uaux) - f[aux];
+		uaux=
+			uaux
+			-( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]+ u[index2d(i+1,j,n)]
+			   +uaux1 -4*uaux)*d2 +nonlin )/denom;
+		u[aux] = uaux;
+		
+		denom  = predenom + df(uaux1);
+		nonlin = uaux1 * invtau + fn(uaux1) - f[aux1];
+		uaux1=
+			uaux1
+			-( (u[index2d(i-1,j+1,n)]+uaux+ u[index2d(i+1,j+1,n)]
+			   +uaux2 -4*uaux1)*d2 +nonlin )/denom;
+		u[aux1] = uaux1;
+		
+		denom  = predenom + df(uaux2);
+		nonlin = uaux2 * invtau + fn(uaux2) - f[aux2];
+		uaux2=
+			uaux2
+			-( (u[index2d(i-1,j+2,n)]+uaux1+ u[index2d(i+1,j+2,n)]
+			   +uaux3 -4*uaux2)*d2 +nonlin )/denom;
+		u[aux2] = uaux2;
+		
+		denom  = predenom + df(uaux3);
+		nonlin = uaux3 * invtau + fn(uaux3) - f[aux3];
+		u[aux3] =
+			uaux3
+			-( (u[index2d(i-1,j+3,n)]+uaux2+ u[index2d(i+1,j+3,n)]
+			   +u[index2d(i,j+4,n)] -4*uaux3)*d2 +nonlin )/denom;
+		
+		
     }//j
+
+	for(; j<n; j++){
+		denom= -4.*d2 +invtau+df(u[index2d(i,j,n)]);
+		nonlin=u[index2d(i,j,n)]*invtau +fn(u[index2d(i,j,n)]) -f[index2d(i,j,n)];
+		u[index2d(i,j,n)]=
+			u[index2d(i,j,n)]
+			- ( 
+				(u[index2d(i-1,j,n)] + u[index2d(i,j-1,n)] 		+ u[index2d(i+1,j,n)]
+				+u[index2d(i,j+1,n)] - 4*u[index2d(i,j,n)])*d2  + nonlin )
+				/denom;		
+	}
   }//i
 
 }/*newtonnl*/
+
+// void newtonnl( double *u, int n, double *f)
+// { //newtons method directly for pde
+//   int i,j,nmem; double h,h2,d2,*u2;
+//   double nonlin,denom;
+// 
+//   h=(xmax-xmin)/(double) n;
+//   h2=h*h;     //  if you change this, you must also change d2 in defect !!!
+//   d2=1./h2;
+//   for(i=0;i<n;i++){ 
+//     for(j=0;j<n;j++){ 
+//       denom= -4.*d2 +invtau+df(u[index2d(i,j,n)]);
+//       nonlin=u[index2d(i,j,n)]*invtau +fn(u[index2d(i,j,n)]) -f[index2d(i,j,n)];
+//       u[index2d(i,j,n)]=
+// 	u[index2d(i,j,n)]
+// 	-( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]+ u[index2d(i+1,j,n)]
+// 	   +u[index2d(i,j+1,n)] -4*u[index2d(i,j,n)])*d2 +nonlin )/denom;
+//     }//j
+//   }//i
+// 
+// }/*newtonnl*/
