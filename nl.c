@@ -553,10 +553,7 @@ int index2d(int i,int  j,int  stride)	// this is the wrap-around condition for
   // if(j<0) j+=stride;
   // else if(j>=stride) j-=stride;
 
-	i = (i+stride)%stride;
-	j = (j+stride)%stride;
-
-  return(i+stride*j);
+  return((i+stride)%stride + stride * (j+stride)%stride);
 }
 
 void interpolate(double *uc,double *uf,int nc,int nf)
