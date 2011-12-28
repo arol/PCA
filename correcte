@@ -1,2 +1,5 @@
 #!/bin/bash
+time ./nl-gcc.3 > /tmp/dump
+echo "Testing..."
 diff nlmax original-output/nlmax
+echo "Finished!"

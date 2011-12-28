@@ -683,16 +683,72 @@ void defectnl(double *d, double *u,int n,double *f)
   h=(xmax-xmin)/(double) n; //this is h : h= (xmax-xmin)/n
   h2=h*h;
   d2=1./h2;
+
+	int blocs = n/4;
+	int llindar = blocs * 4;
+	// int resta = blocs - llindar;
+
+	int aux, aux1, aux2, aux3;
+	double uaux, uaux1, uaux2, uaux3;
+
   for( i=0;i<n;i++){ 
-    for( j=0;j<n;j++){  // d = f - Nu
-      d[index2d(i,j,n)]=f[index2d(i,j,n)] -
-	+ (  (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]
-	      +u[index2d(i+1,j,n)]+u[index2d(i,j+1,n)] -4*u[index2d(i,j,n)])*d2
-	     +invtau*u[index2d(i,j,n)]
-	     +fn(u[index2d(i,j,n)]) );
+    // for( j=0;j<n;j++){  // d = f - Nu
+	for(j=0; j<llindar; j+=4){
+	
+		aux = index2d(i,j,n);
+		uaux = u[aux];
+		aux1= index2d(i,j+1,n);
+		uaux1 = u[aux1];
+		aux2= index2d(i,j+2,n);
+		uaux2 = u[aux2];
+		aux3= index2d(i,j+3,n);
+		uaux3 = u[aux3];
+	
+		d[aux] = f[aux] -
+			+ ( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]
+					+u[index2d(i+1,j,n)]+uaux1 -4*uaux)*d2
+			     +invtau*uaux
+			     +fn(uaux) );
+	
+		d[aux1] = f[aux1] -
+			+ ( (u[index2d(i-1,j+1,n)]+uaux
+					+u[index2d(i+1,j+1,n)]+uaux2 -4*uaux1)*d2
+			     +invtau*uaux1
+			     +fn(uaux1) );
+
+		d[aux2] = f[aux2] -
+			+ ( (u[index2d(i-1,j+2,n)]+uaux1
+					+u[index2d(i+1,j+2,n)]+uaux3 -4*uaux2)*d2
+			     +invtau*uaux2
+			     +fn(uaux2) );
+
+		d[aux3] = f[aux3] -
+			+ ( (u[index2d(i-1,j+3,n)]+uaux2
+					+u[index2d(i+1,j+3,n)]+u[index2d(i,j+4,n)]  -4*uaux3)*d2
+			     +invtau*uaux3
+			     +fn(uaux3) );
+
 
     }
+	for(; j<n; j++){
+		d[index2d(i,j,n)]=f[index2d(i,j,n)] -
+		+ (  (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]
+		      +u[index2d(i+1,j,n)]+u[index2d(i,j+1,n)] -4*u[index2d(i,j,n)])*d2
+		     +invtau*u[index2d(i,j,n)]
+		     +fn(u[index2d(i,j,n)]) );
+	}
   }
+
+	//   for( i=0;i<n;i++){ 
+	//     for( j=0;j<n;j++){  // d = f - Nu
+	//       d[index2d(i,j,n)]=f[index2d(i,j,n)] -
+	// + (  (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]
+	//       +u[index2d(i+1,j,n)]+u[index2d(i,j+1,n)] -4*u[index2d(i,j,n)])*d2
+	//      +invtau*u[index2d(i,j,n)]
+	//      +fn(u[index2d(i,j,n)]) );
+	// 
+	//     }
+	//   }
 }/* defectnl */
 
 void funct(double *f,double *u,int n, int t)
