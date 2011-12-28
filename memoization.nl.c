@@ -125,6 +125,9 @@ inline double df( double u){
 }
 /* --------------------------------------------------------------------*/
 
+int*** calci2d;
+int imax, imin, jmin, jmax, stridemin, stridemax;
+
 main(int argc, char *argv[])
 {
   double *areal; /* areal is the variable I'm solving for. will be called u
@@ -136,6 +139,9 @@ main(int argc, char *argv[])
   FILE *f1 ;
   char filename[filesize];
 
+imin = imax = jmin = jmax =stridemax;
+stridemin = 0;
+
   /* Use command line argument if it exists. Otherwise use default value in
      nmax. */
   n = (argc > 1) ? atoi(argv[1]) : nmax;
@@ -144,6 +150,87 @@ main(int argc, char *argv[])
   t=1;
   f1=fopen("nlmax","w");/* in this file gets printed the maximum of the 
 			   calculated and actual solutions. for comparison */
+			
+//===============================
+
+//Precalculem index2d 270400
+// -1.64 -1.64 0.64 [66][66][65]
+
+// int c2d[n+2][n+2][n+1];
+// 	calci2d=malloc((n+2)*(n+2)*(n+1)*sizeof(int));
+//     calci2d = &c2d[0][0][0];
+// 	if(calci2d==NULL)printf(" oopsies can't allocate calci2d %d \n",__LINE__);
+// 	int i2d, j2d;
+// 	i2d = j2d = 0;
+// 	int* p = &c2d[0][0][0];
+// 	
+	//printf(" %p ______ %p \n ", calci2d, p);
+	
+			int i2d, j2d;
+			
+			// printf("malloc calci2d\n");
+			calci2d = malloc((n+2)*sizeof(int**));
+			if(calci2d==NULL)printf(" oopsies can't allocate calci2d %d \n",__LINE__);
+			for(i2d=0; i2d < (n+2); i2d++){
+				// printf("malloc calci2d[%d]\n", i2d);
+				calci2d[i2d] = malloc((n+2)*sizeof(int*));
+				if(calci2d[i2d]==NULL)printf(" oopsies can't allocate calci2d[%d] %d \n", i2d,__LINE__);
+				for( j2d = 0; j2d < (n+2); j2d++){
+					/* code */
+					// printf("malloc calci2d[%d][%d]\n", i2d, j2d);
+					calci2d[i2d][j2d] = malloc((n+1)*sizeof(int));
+					if(calci2d[i2d][j2d]==NULL)printf(" oopsies can't allocate calci2d[%d][%d] %d \n", i2d,j2d, __LINE__);
+				}
+			}
+
+	int stride = 0;
+	i2d = j2d = 0;
+	int *p = &calci2d[0][0][0];
+	
+	for(i2d=0; i2d < (n+2); i2d ++){
+		for(j2d=0; j2d < (n+2); j2d ++){
+			for(stride=0; stride < (n+1); stride ++){
+				calci2d[i2d][j2d][stride] = (i2d-1+n)%n + stride*((j2d-1+n)%n);
+			}
+		}
+	}
+	
+	
+
+	// while(i2d<n+2){
+	// 	//   if(i<0) i+=stride;
+	// 	//   else if(i>=stride) i-=stride;
+	// 	//   if(j<0) j+=stride;
+	// 	//   else if(j>=stride) j-=stride;
+	// 	// int aux = (i+stride*j);
+	// 	  // return(i+stride*j);
+	// 	
+	// 	printf("computing calci2d[%d][%d][%d]", i2d, j2d, stride);
+	// 	*p = (i2d-1+n)%n + stride*((j2d-1+n)%n);
+	// 	printf(" = %d\n", (i2d-1+n)%n + stride*((j2d-1+n)%n));
+	// 	p++;
+	// 	
+	// 	if(j2d == 1){
+	// 		printf("%d == %d", calci2d[i2d][j2d][stride], (i2d-1+n)%n + stride*((j2d-1+n)%n));
+	// 		exit(0);
+	// 	}
+	// 	
+	// 	stride ++;
+	// 	if(stride == n+1){ 
+	// 		stride = 0;
+	// 		j2d++;
+	// 		if(j2d == n+2){
+	// 			j2d = 0;
+	// 			i2d++;
+	// 		}
+	// 	}
+	// } //while
+
+
+//=============================
+			
+
+
 
   areal=malloc(nmem*sizeof(double));
   if(areal==NULL)printf(" oopsies can't allocate areal %d \n",__LINE__);
@@ -152,21 +239,23 @@ main(int argc, char *argv[])
   freal=malloc(nmem*sizeof(double));
   if(freal==NULL)printf(" oopsies can't allocate freal %d \n",__LINE__);
 
-
+	h=(xmax-xmin)/(double) n;
+	
   while(t < timemax){
 
     funct(freal,areal,n,t);
     mgrid(areal,n,freal,t);
     //mgrid(areal,nmax,freal,t);
 	
-    h=(xmax-xmin)/(double) n;
-
     fprintf(f1,"%d %lf %lf \n",t,areal[index2d(n/4,n/4,n)],sin(t*tau));
     fflush(f1);
 
     t++;
   }/* while */
       
+printf( "imin: %d imax: %d\n", imin, imax );
+printf( "jmin: %d jmax: %d\n", jmin, jmax );
+printf( "stridemin: %d stridemax: %d\n", stridemin, stridemax );
 
   fclose(f1);
   free(areal);
@@ -548,15 +637,29 @@ void pooofle(double *u,int n,double *f,double *nlin)
 
 int index2d(int i,int  j,int  stride)	// this is the wrap-around condition for
 {   					// the periodic boundaries
-  // if(i<0) i+=stride;
-  // else if(i>=stride) i-=stride;
-  // if(j<0) j+=stride;
-  // else if(j>=stride) j-=stride;
-
-	i = (i+stride)%stride;
-	j = (j+stride)%stride;
-
-  return(i+stride*j);
+	// if (i>imax) imax=i;
+	// if (j>jmax) jmax=j;
+	// 
+	// if (i<imin) imin=i;
+	// if (j<jmin) jmin=j;
+	// 
+	// if (stride<stridemin) stridemin=stride;
+	// if (stride>stridemax) stridemax=stride;
+	// 
+	// 
+	// 
+	// 
+	//   if(i<0) i+=stride;
+	//   else if(i>=stride) i-=stride;
+	//   if(j<0) j+=stride;
+	//   else if(j>=stride) j-=stride;
+	// int aux = (i+stride*j);
+	  // return(i+stride*j);
+	
+	// printf( "accessing calci2d[%d][%d][%d]\n", i+1, j+1,stride);
+	//int aux = *p[i+1][j+1][stride];
+	// printf( "FET!! :  %d \n", aux);
+	return calci2d[i+1][j+1][stride];
 }
 
 void interpolate(double *uc,double *uf,int nc,int nf)
@@ -664,17 +767,26 @@ void newton( double *u, int n, double *f, double *v)
   int i,j,nmem;
   double h,h2,d2;
   double nonlin,denom,*v2;
+int aux;
+double predenom;
 
   h=(xmax-xmin)/(double) n; 
   //this is h : h= (xmax-xmin)/n, assuming xmax/min=ymax/min
   h2=h*h;     //  if you change this, you must also change d2 in defect !!!
   d2=1./h2;
 
+	// printf("Loop from 0 0 to i:%d j:%d\n", i, j );
+predenom = -4.*d2 +invtau;
+
   for(i=0;i<n;i++){
+	 
+	
     for(j=0;j<n;j++){
-      denom= -4.*d2 +invtau +df(u[index2d(i,j,n)]);
-      v[index2d(i,j,n)]=
-	(f[index2d(i,j,n)]-(v[index2d(i-1,j,n)]+v[index2d(i,j-1,n)]
+		aux =index2d(i,j,n);
+      denom=  predenom + df(u[aux]);
+		// printf("-4.* %f + %f\n", d2, invtau );
+      v[aux]=
+	(f[aux]-(v[index2d(i-1,j,n)]+v[index2d(i,j-1,n)]
        + v[index2d(i+1,j,n)]+v[index2d(i,j+1,n)] )*d2 )/denom;
     }
   }
