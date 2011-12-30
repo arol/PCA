@@ -215,22 +215,34 @@ void mgrid(double *u, int n,double *f,int t)
   if(dc==NULL) printf(" oopsies can't allocate dc  %d\n",__LINE__);
 
 
-  for(i=0;i<nmem;i++){  // initialize to 0
-    v[i]=0.;
-    uback[i]=0.;
-    d[i]=0.; }  // end of v,d,uback initialization
-  for(i=0;i<ncmem;i++){
-    vc[i]=0.;
-    dc[i]=0.; }  // end of vc,dc
+	for(i=0;i<nmem;i++){  // initialize to 0
+		v[i]=0.;
+		uback[i]=0.;
+		d[i]=0.; 
+	}  // end of v,d,uback initialization
+	for(i=0;i<ncmem;i++){
+		vc[i]=0.;
+		dc[i]=0.; 
+	}  // end of vc,dc
 
 
 
   h=(xmax-xmin)/(double) n;
+
+// double calcsini;
+// double calcsinttau = sin(t*tau);
   for(i=0;i<n;i++){
     x=xmin+h*i;
     for(j=0;j<n;j++){
       y=xmin+h*j;
       uback2[index2d(i,j,n)]=sin(x)*sin(y)*sin(t*tau);
+	
+	// printf("\n=================\n");
+	// printf("x: %f, sin(x): %f\n", x, sin(x));
+	// printf("y: %f, sin(y): %f\n", x, sin(y));
+	// printf("t*tau: %f, sin(t*tau): %f\n", x, sin(t*tau));
+	// printf("=================\n");
+
     }//y     // the actual solution, to compare
   }//x
 
@@ -392,41 +404,46 @@ void ic(double *u,int n,int t) // initial condition
 {
   int i,j;
   double x,y,h,timebefore;
+double sinx, sint;
 
   h=(xmax-xmin)/(double) n;
 
   timebefore=(double)(t-1)*tau;
+sint = sin(timebefore);
   for(i=0;i<n;i++){
-    x=i*h+xmin; 
+    x=i*h+xmin;
+	sinx = sin(x);
     for(j=0;j<n;j++){
       y=j*h+xmin; 
-      u[index2d(i,j,n)]=sin(x)*sin(y)*sin(timebefore);
+      u[index2d(i,j,n)]=sinx*sin(y)*sint;
     }//i
   }//j
 }/* ic */
 
 double error(double *u,double *uback, int n,int *imx,int *jmx)
-{   double diff,diffmx,ave;
- int i,j,ic,k;		/* calculates the difference between u now &
-			   u before, as one way to calculate error */
- ave=0;
- diffmx=0;
- ic=0;
- for(i=0;i<n;i++){
-   for(j=0;j<n;j++){
-     diff=u[index2d(i,j,n)]-uback[index2d(i,j,n)];
-     if(diff < 0) diff=-diff;
-     ave+=diff;
-     ic+=1;
-     if(diff > diffmx){
-       diffmx=diff; 	
-       *imx=i;
-       *jmx=j;
-     } //if
-   }//j
- }//i
- ave=ave/ic;
- return (diffmx);
+{   
+	double diff,diffmx,ave;
+	int i,j,ic,k;		/* calculates the difference between u now &
+	u before, as one way to calculate error */
+	ave=0;
+	diffmx=0;
+	ic=0;
+	for(i=0;i<n;i++){
+		for(j=0;j<n;j++){
+			diff=u[index2d(i,j,n)]-uback[index2d(i,j,n)];
+			// if(diff < 0) diff=-diff;
+			diff=fabs(diff);
+			ave+=diff;
+			ic+=1;
+			if(diff > diffmx){
+				diffmx=diff; 	
+				*imx=i;
+				*jmx=j;
+			} //if
+		}//j
+	}//i
+	ave=ave/ic;
+	return (diffmx);
 }/*error*/
 
 
@@ -558,6 +575,8 @@ void interpolate(double *uc,double *uf,int nc,int nf)
   int ic,jc;
   /*       first equate the matching points on grid  */
 
+// printf("%d %d\n", nc, nf);
+
   n=nc;
   for( ic=0;ic<nc;ic++){  /* remember uc,nc is coarse grid, uf nf is fine */
     for( jc=0;jc<nc;jc++){       
@@ -674,6 +693,91 @@ void newton( double *u, int n, double *f, double *v)
 
 }/*newton*/
 
+// void newton( double *u, int n, double *f, double *v)
+// {
+//   /* linearized newtons method for nonlinear pde  
+//    * see p. 149 trottenberg for example */ 
+// 
+// 	int i,j,nmem;
+// 	double h,h2,d2;
+// 	double nonlin,denom,*v2, predenom;
+// 
+// 	h=(xmax-xmin)/(double) n; 
+// 	//this is h : h= (xmax-xmin)/n, assuming xmax/min=ymax/min
+// 	h2=h*h;     //  if you change this, you must also change d2 in defect !!!
+// 	d2=1./h2;
+// 
+// 	predenom = -4. * d2 + invtau;
+// 	int blocs = n/4;
+// 	int llindar = blocs * 4;
+// 
+// 	int aux, aux1, aux2, aux3;
+// 	double vaux, vaux1, vaux2, vaux3;
+// 
+// 	for(i=0;i<n;i++){
+// 		// for(j=0;j<n;j++){
+// 		for(j=0;j<llindar;j+=4){
+// 	
+// 			aux = index2d(i,j,n);
+// 			vaux = v[aux];
+// 			aux1= index2d(i,j+1,n);
+// 			vaux1 = v[aux1];
+// 			aux2= index2d(i,j+2,n);
+// 			vaux2 = v[aux2];
+// 			aux3= index2d(i,j+3,n);
+// 			vaux3 = v[aux3];
+// 		
+// 			denom  = predenom + df(u[aux]);
+// 			// nonlin = uaux * invtau + fn(uaux) - f[aux];
+// 		
+// 			denom= -4.*d2 +invtau +df(u[aux]);
+// 			v[aux]=
+// 				(f[aux]-(v[index2d(i-1,j,n)]+v[index2d(i,j-1,n)]
+// 			 	+ v[index2d(i+1,j,n)]+vaux1 )*d2 )/denom;
+// 		
+// 			// ======================================== 1
+// 		
+// 			denom  = predenom + df(u[aux1]);
+// 			// nonlin = uaux * invtau + fn(uaux) - f[aux];
+// 		
+// 			denom= -4.*d2 +invtau +df(u[aux1]);
+// 			v[aux1]=
+// 				(f[aux1]-(v[index2d(i-1,j+1,n)]+vaux
+// 			 	+ v[index2d(i+1,j+1,n)]+vaux2 )*d2 )/denom;
+// 		
+// 			// ======================================== 2
+// 		
+// 			denom  = predenom + df(u[aux2]);
+// 			// nonlin = uaux * invtau + fn(uaux) - f[aux];
+// 		
+// 			denom= -4.*d2 +invtau +df(u[aux2]);
+// 			v[aux2]=
+// 				(f[aux2]-(v[index2d(i-1,j+2,n)]+vaux1
+// 			 	+ v[index2d(i+1,j+2,n)]+vaux2 )*d2 )/denom;
+// 		
+// 			// ======================================== 3
+// 		
+// 			denom  = predenom + df(u[aux3]);
+// 			// nonlin = uaux * invtau + fn(uaux) - f[aux];
+// 		
+// 			denom= -4.*d2 +invtau +df(u[aux3]);
+// 			v[aux3]=
+// 				(f[aux3]-(v[index2d(i-1,j+3,n)]+vaux2
+// 			 	+ v[index2d(i+1,j+3,n)]+vaux3 )*d2 )/denom;
+// 
+// 		}
+// 
+// 		for(;j<n;j++){
+// 			denom= -4.*d2 +invtau +df(u[index2d(i,j,n)]);
+// 			v[index2d(i,j,n)]=
+// 				(f[index2d(i,j,n)]-(v[index2d(i-1,j,n)]+v[index2d(i,j-1,n)]
+// 				+ v[index2d(i+1,j,n)]+v[index2d(i,j+1,n)] )*d2 )/denom;
+// 		}
+// 
+// 	}
+// 
+// }/*newton*/
+
 
 void defectnl(double *d, double *u,int n,double *f) 
 {
@@ -738,37 +842,33 @@ void defectnl(double *d, double *u,int n,double *f)
 		     +fn(u[index2d(i,j,n)]) );
 	}
   }
-
-	//   for( i=0;i<n;i++){ 
-	//     for( j=0;j<n;j++){  // d = f - Nu
-	//       d[index2d(i,j,n)]=f[index2d(i,j,n)] -
-	// + (  (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]
-	//       +u[index2d(i+1,j,n)]+u[index2d(i,j+1,n)] -4*u[index2d(i,j,n)])*d2
-	//      +invtau*u[index2d(i,j,n)]
-	//      +fn(u[index2d(i,j,n)]) );
-	// 
-	//     }
-	//   }
 }/* defectnl */
 
 void funct(double *f,double *u,int n, int t)
 {
   int i,j,k;
   double x,y,z,h,t1;
-  double d2,sxsy,sint,sint1,uij,fij,fm1,fm,cost,cost1;
+  double d2,sxsy,sint,sint1,uij,fij,fm1,fm,cost,cost1, sinx;
   t1=(t-1)*tau;
   d2=(double)n/(xmax-xmin);
   d2=d2*d2;
   h=(xmax-xmin)/(double) n;
+
+  sint=sin(t*tau);
+  sint1=sin(t1);
+  cost=cos(t*tau);
+  cost1=cos(t1);
+
   for(i=0;i<n;i++){
     x=i*h +xmin;
+	sinx = sin(x);
     for(j=0;j<n;j++){ 
       y=j*h +xmin;
-      sxsy=sin(x)*sin(y); // definitions to make things easier
-      sint=sin(t*tau);
-      sint1=sin(t1);
-      cost=cos(t*tau);
-      cost1=cos(t1);
+      sxsy=sinx*sin(y); // definitions to make things easier
+      // sint=sin(t*tau);
+      // sint1=sin(t1);
+      // cost=cos(t*tau);
+      // cost1=cos(t1);
       uij=u[index2d(i,j,n)];
       // define the functions f^m+1, f^m here to makes things easier
       // eqn is : Nu +f = d_t u  => f=d_t u-Nu
@@ -783,106 +883,223 @@ void funct(double *f,double *u,int n, int t)
   
     }//j
   }//i
-} /* funct */ 
+} /* funct */
 
+// void newtonnl( double *u, int n, double *f)
+// { //newtons method directly for pde
+//   int i,j,nmem; double h,h2,d2,*u2;
+//   double nonlin,denom, predenom;
+// 
+// 
+// 
+//   h=(xmax-xmin)/(double) n;
+//   h2=h*h;     //  if you change this, you must also change d2 in defect !!!
+//   d2=1./h2;
+// 
+// 	predenom = -4. * d2 + invtau;
+// 
+// int blocs = n/4;
+// int llindar = blocs * 4;
+// // int resta = blocs - llindar;
+// 
+// int aux, aux1, aux2, aux3;
+// double uaux, uaux1, uaux2, uaux3;
+// 
+//   for(i=0;i<n;i++){
+//     // for(j=0;j<n;j++){
+//     for(j=0;j<llindar;j+=4){
+//     // for(j=0;j<n;j+=1){
+// 		aux = index2d(i,j,n);
+// 		uaux = u[aux];
+// 		aux1= index2d(i,j+1,n);
+// 		uaux1 = u[aux1];
+// 		aux2= index2d(i,j+2,n);
+// 		uaux2 = u[aux2];
+// 		aux3= index2d(i,j+3,n);
+// 		uaux3 = u[aux3];
+// 	
+// 		denom  = predenom + df(uaux);
+// 		nonlin = uaux * invtau + fn(uaux) - f[aux];
+// 		uaux=
+// 			uaux
+// 			-( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]+ u[index2d(i+1,j,n)]
+// 			   +uaux1 -4*uaux)*d2 +nonlin )/denom;
+// 		u[aux] = uaux;
+// 		
+// 		denom  = predenom + df(uaux1);
+// 		nonlin = uaux1 * invtau + fn(uaux1) - f[aux1];
+// 		uaux1=
+// 			uaux1
+// 			-( (u[index2d(i-1,j+1,n)]+uaux+ u[index2d(i+1,j+1,n)]
+// 			   +uaux2 -4*uaux1)*d2 +nonlin )/denom;
+// 		u[aux1] = uaux1;
+// 		
+// 		denom  = predenom + df(uaux2);
+// 		nonlin = uaux2 * invtau + fn(uaux2) - f[aux2];
+// 		uaux2=
+// 			uaux2
+// 			-( (u[index2d(i-1,j+2,n)]+uaux1+ u[index2d(i+1,j+2,n)]
+// 			   +uaux3 -4*uaux2)*d2 +nonlin )/denom;
+// 		u[aux2] = uaux2;
+// 		
+// 		denom  = predenom + df(uaux3);
+// 		nonlin = uaux3 * invtau + fn(uaux3) - f[aux3];
+// 		u[aux3] =
+// 			uaux3
+// 			-( (u[index2d(i-1,j+3,n)]+uaux2+ u[index2d(i+1,j+3,n)]
+// 			   +u[index2d(i,j+4,n)] -4*uaux3)*d2 +nonlin )/denom;
+// 		
+// 		
+//     }//j
+// 
+// 	for(; j<n; j++){
+// 		denom= -4.*d2 +invtau+df(u[index2d(i,j,n)]);
+// 		nonlin=u[index2d(i,j,n)]*invtau +fn(u[index2d(i,j,n)]) -f[index2d(i,j,n)];
+// 		u[index2d(i,j,n)]=
+// 			u[index2d(i,j,n)]
+// 			- ( 
+// 				(u[index2d(i-1,j,n)] + u[index2d(i,j-1,n)] 		+ u[index2d(i+1,j,n)]
+// 				+u[index2d(i,j+1,n)] - 4*u[index2d(i,j,n)])*d2  + nonlin )
+// 				/denom;		
+// 	}
+//   }//i
+// 
+// }/*newtonnl*/
+
+// Versio amb punters
+/////////////////////////////////////////////////////////////////
 void newtonnl( double *u, int n, double *f)
 { //newtons method directly for pde
   int i,j,nmem; double h,h2,d2,*u2;
   double nonlin,denom, predenom;
-
-
+double *p, *pfix;
+double val1,val2,val3,val4;
 
   h=(xmax-xmin)/(double) n;
   h2=h*h;     //  if you change this, you must also change d2 in defect !!!
   d2=1./h2;
 
-	predenom = -4. * d2 + invtau;
-
-int blocs = n/4;
-int llindar = blocs * 4;
-// int resta = blocs - llindar;
-
-int aux, aux1, aux2, aux3;
-double uaux, uaux1, uaux2, uaux3;
-
-  for(i=0;i<n;i++){
-    // for(j=0;j<n;j++){
-    for(j=0;j<llindar;j+=4){
-    // for(j=0;j<n;j+=1){
-		aux = index2d(i,j,n);
-		uaux = u[aux];
-		aux1= index2d(i,j+1,n);
-		uaux1 = u[aux1];
-		aux2= index2d(i,j+2,n);
-		uaux2 = u[aux2];
-		aux3= index2d(i,j+3,n);
-		uaux3 = u[aux3];
+	predenom=-4.*d2 +invtau;
+	i=0;
 	
-		denom  = predenom + df(uaux);
-		nonlin = uaux * invtau + fn(uaux) - f[aux];
-		uaux=
-			uaux
-			-( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]+ u[index2d(i+1,j,n)]
-			   +uaux1 -4*uaux)*d2 +nonlin )/denom;
-		u[aux] = uaux;
+pfix=&u[index2d(i,0,n)];
+p=pfix;
+  for(j=0;j<n;j++, p+=n){ 
+    denom= predenom+df(*p);
+    nonlin=*p*invtau +fn(*p) -f[index2d(i,j,n)];
+    *p=
+	*p
+	-( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]+ *(p+1)
+	   +u[index2d(i,j+1,n)] -4*(*p))*d2 +nonlin )/denom;
+  }//j
+// pfix = &u[index2d(i,0,n)];
+
+  for(i=1;i<n-1;i++){ 
+	j=0;
+	// p = &u[index2d(i,j,n)];
+	p=pfix+i;
+
+	denom= predenom + df(*p);
+	nonlin=(*p)*invtau +fn(*p) -f[index2d(i,j,n)];
+	*p=
+		*p
+		-( (*(p-1)+u[index2d(i,j-1,n)]+ *(p+1)
+		   +*(p+n) -4*(*p))*d2 +nonlin )/denom;
+
+
+    for(j=1;j<n-5;j+=4){ 
+	//probar pointers
+	// printf("%d - %d \n", i, j);
+		p+=n; //augmentem n
+
+		val1=*p;
+		val2=*(p+n);
+		val3=*(p+2*n);
+		val4=*(p+3*n);
 		
-		denom  = predenom + df(uaux1);
-		nonlin = uaux1 * invtau + fn(uaux1) - f[aux1];
-		uaux1=
-			uaux1
-			-( (u[index2d(i-1,j+1,n)]+uaux+ u[index2d(i+1,j+1,n)]
-			   +uaux2 -4*uaux1)*d2 +nonlin )/denom;
-		u[aux1] = uaux1;
+
+		denom= predenom+df(val1);
+		nonlin=(val1)*invtau +fn(val1) -f[index2d(i,j,n)];
+
+		*p=
+			val1
+			-( (*(p-1)+*(p-n)+ *(p+1)
+				+ val2 -4 * val1)*d2 +nonlin )/denom;
 		
-		denom  = predenom + df(uaux2);
-		nonlin = uaux2 * invtau + fn(uaux2) - f[aux2];
-		uaux2=
-			uaux2
-			-( (u[index2d(i-1,j+2,n)]+uaux1+ u[index2d(i+1,j+2,n)]
-			   +uaux3 -4*uaux2)*d2 +nonlin )/denom;
-		u[aux2] = uaux2;
+		///////////////////////////////////////////
 		
-		denom  = predenom + df(uaux3);
-		nonlin = uaux3 * invtau + fn(uaux3) - f[aux3];
-		u[aux3] =
-			uaux3
-			-( (u[index2d(i-1,j+3,n)]+uaux2+ u[index2d(i+1,j+3,n)]
-			   +u[index2d(i,j+4,n)] -4*uaux3)*d2 +nonlin )/denom;
+		p+=n; //augmentem n
+
+		denom= predenom+df(val2);
+		nonlin=(val2)*invtau +fn(val2) -f[index2d(i,j+1,n)];
+
+		*p=
+			*p
+			-( (*(p-1)+ val1+ *(p+1)
+				+ val3 -4* val2)*d2 +nonlin )/denom;
+
+		///////////////////////////////////////////		
+		
+		p+=n; //augmentem n
+
+		denom= predenom+df(val3);
+		nonlin=(val3)*invtau +fn(val3) -f[index2d(i,j+2,n)];
+
+		*p=
+			val3
+			-( (*(p-1)+ val2 + *(p+1)
+				+ val4 -4* val3 )*d2 +nonlin )/denom;
+		
+		///////////////////////////////////////////		
+
+		p+=n; //augmentem n
+
+		denom= predenom+df(val4);
+		nonlin=(*p)*invtau +fn(*p) -f[index2d(i,j+3,n)];
+
+		*p=
+			val4
+			-( (*(p-1)+val3+ *(p+1)
+				+*(p+n) -4*val4)*d2 +nonlin )/denom;
 		
 		
+
+    }//j
+    for(;j<n-1;j++){ 
+	//probar pointers
+	// printf("%d - %d \n", i, j);
+		p+=n; //augmentem n
+
+		denom= predenom+df(*p);
+		nonlin=(*p)*invtau +fn(*p) -f[index2d(i,j,n)];
+
+		*p=
+			*p
+			-( (*(p-1)+*(p-n)+ *(p+1)
+				+*(p+n) -4*(*p))*d2 +nonlin )/denom;
+
     }//j
 
-	for(; j<n; j++){
-		denom= -4.*d2 +invtau+df(u[index2d(i,j,n)]);
-		nonlin=u[index2d(i,j,n)]*invtau +fn(u[index2d(i,j,n)]) -f[index2d(i,j,n)];
-		u[index2d(i,j,n)]=
-			u[index2d(i,j,n)]
-			- ( 
-				(u[index2d(i-1,j,n)] + u[index2d(i,j-1,n)] 		+ u[index2d(i+1,j,n)]
-				+u[index2d(i,j+1,n)] - 4*u[index2d(i,j,n)])*d2  + nonlin )
-				/denom;		
-	}
+	p+=n;
+	denom= predenom +df(*p);
+	nonlin=*p*invtau +fn(*p) -f[index2d(i,j,n)];
+	*p=
+		*p
+		-( (*(p-1)+*(p-n)+ *(p+1)
+		   +u[index2d(i,j+1,n)] -4*(*p))*d2 +nonlin )/denom;
   }//i
 
-}/*newtonnl*/
+p=pfix+i;
+  for(j=0;j<n;j++){ 
+	denom= -4.*d2 +invtau+df(*p);
+    nonlin=(*p)*invtau +fn(*p) -f[index2d(i,j,n)];
+    *p=
+	*p
+	-( (*(p-1)+u[index2d(i,j-1,n)]+ u[index2d(i+1,j,n)]
+	   +u[index2d(i,j+1,n)] -4**(p))*d2 +nonlin )/denom;
+	
+	p+=n;
+  }//j
+	
 
-// void newtonnl( double *u, int n, double *f)
-// { //newtons method directly for pde
-//   int i,j,nmem; double h,h2,d2,*u2;
-//   double nonlin,denom;
-// 
-//   h=(xmax-xmin)/(double) n;
-//   h2=h*h;     //  if you change this, you must also change d2 in defect !!!
-//   d2=1./h2;
-//   for(i=0;i<n;i++){ 
-//     for(j=0;j<n;j++){ 
-//       denom= -4.*d2 +invtau+df(u[index2d(i,j,n)]);
-//       nonlin=u[index2d(i,j,n)]*invtau +fn(u[index2d(i,j,n)]) -f[index2d(i,j,n)];
-//       u[index2d(i,j,n)]=
-// 	u[index2d(i,j,n)]
-// 	-( (u[index2d(i-1,j,n)]+u[index2d(i,j-1,n)]+ u[index2d(i+1,j,n)]
-// 	   +u[index2d(i,j+1,n)] -4*u[index2d(i,j,n)])*d2 +nonlin )/denom;
-//     }//j
-//   }//i
-// 
-// }/*newtonnl*/
+}/*newtonnl*/
