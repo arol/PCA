@@ -152,7 +152,6 @@ main(int argc, char *argv[])
   freal=malloc(nmem*sizeof(double));
   if(freal==NULL)printf(" oopsies can't allocate freal %d \n",__LINE__);
 
-
   while(t < timemax){
 
     funct(freal,areal,n,t);
@@ -231,11 +230,16 @@ void mgrid(double *u, int n,double *f,int t)
 
 // double calcsini;
 // double calcsinttau = sin(t*tau);
+double sinx, sint;
+	x=xmin;
+	sint=sin(t*tau);
   for(i=0;i<n;i++){
-    x=xmin+h*i;
+	x+=h;
+	y=xmin;
+	sinx = sin(x);
     for(j=0;j<n;j++){
-      y=xmin+h*j;
-      uback2[index2d(i,j,n)]=sin(x)*sin(y)*sin(t*tau);
+      y+=h;
+      uback2[index2d(i,j,n)]=sinx*sin(y)*sint;
 	
 	// printf("\n=================\n");
 	// printf("x: %f, sin(x): %f\n", x, sin(x));
@@ -265,6 +269,7 @@ void mgrid(double *u, int n,double *f,int t)
       newtonnl(u,n,f);
     }//nrep1
 
+	
     for( i=0;i<nmem;i++){
       uback[i]=u[i]; 
     }//uback=u
@@ -692,6 +697,77 @@ void newton( double *u, int n, double *f, double *v)
   }
 
 }/*newton*/
+// void newton( double *u, int n, double *f, double *v)
+// {
+//   /* linearized newtons method for nonlinear pde  
+//    * see p. 149 trottenberg for example */ 
+// 
+//   int i,j,nmem;
+//   double h,h2,d2;
+//   double nonlin,denom,*v2;
+// double *p, *pfix;
+// 
+// 	h=(xmax-xmin)/(double) n; 
+// 	//this is h : h= (xmax-xmin)/n, assuming xmax/min=ymax/min
+// 	h2=h*h;     //  if you change this, you must also change d2 in defect !!!
+// 	d2=1./h2;
+// 
+// 	pfix=&v[index2d(i,0,n)];
+// 	p=pfix;
+// 	i=0;
+// 
+// 	for(j=0;j<n;j++,p+=n){
+// 		if(p!=&v[index2d(i,j,n)]){
+// 			printf("%d - %d\n", i, j);
+// 			printf("%p - %p\n", p, &v[index2d(i,j,n)]);
+// 			exit(0);
+// 		}
+// 		denom= -4.*d2 +invtau +df(u[index2d(i,j,n)]);
+// 		*p=
+// 			(f[index2d(i,j,n)]-(v[index2d(i-1,j,n)]+v[index2d(i,j-1,n)]
+// 			+ *(p+1)+v[index2d(i,j+1,n)] )*d2 )/denom;
+// 	}
+// 
+// //////////////////////////////////////////////////////////////////////////////
+// 
+// 	for(i=1;i<n-1;i++){
+// 		j=0;
+// 		p = pfix + i;
+// 		
+// 		denom= -4.*d2 +invtau +df(u[index2d(i,j,n)]);
+// 		*p=
+// 			(f[index2d(i,j,n)]-(*(p-1)+v[index2d(i,j-1,n)]
+// 			+ *(p+1)+*(p+n) )*d2 )/denom;
+// 		/////////////////////////////////////////////////////////////////
+// 		
+// 		for(j=1;j<n-1;j++){
+// 			p+=n;
+// 			denom= -4.*d2 +invtau +df(u[index2d(i,j,n)]);
+// 			*p=
+// 				(f[index2d(i,j,n)]-(*(p-1)+*(p-n)
+// 				+ *(p+1)+*(p+n) )*d2 )/denom;
+// 				
+// 		}
+// 		
+// 		////////////////////////////////////////////////////////////////
+// 		p+=n;
+// 		denom= -4.*d2 +invtau +df(u[index2d(i,j,n)]);
+// 		*p=
+// 			(f[index2d(i,j,n)]-(*(p-1)+*(p-n)
+// 			+ *(p+1)+v[index2d(i,j+1,n)] )*d2 )/denom;
+// 	}
+// 	
+// /////////////////////////////////////////////////////////////////////////////	
+// 	
+// 	p = pfix + i;
+// 	for(j=0;j<n;j++,p+=n){
+// 		denom= -4.*d2 +invtau +df(u[index2d(i,j,n)]);
+// 		*p=
+// 			(f[index2d(i,j,n)]-(*(p-1)+v[index2d(i,j-1,n)]
+// 			+ v[index2d(i+1,j,n)]+v[index2d(i,j+1,n)] )*d2 )/denom;
+// 	}
+// 
+// }/*newton*/
 
 // void newton( double *u, int n, double *f, double *v)
 // {
